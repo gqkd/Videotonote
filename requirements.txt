@@ -2,4 +2,5 @@ openai-whisper
 watchdog
 ollama
 pyyaml
+yt-dlp
 pytest
