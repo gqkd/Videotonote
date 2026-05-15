@@ -16,7 +16,16 @@ Automatically watches a folder for new call recordings, transcribes them with Wh
 git clone https://github.com/gqkd/Videotonote.git
 cd Videotonote
 
-# Install Python dependencies
+# Create and activate virtual environment
+python -m venv .venv
+
+# Activate (Windows)
+.venv\Scripts\activate
+
+# Activate (macOS/Linux)
+source .venv/bin/activate
+
+# Install runtime dependencies
 pip install -r requirements.txt
 
 # Pull the Ollama model (once)
@@ -107,6 +116,9 @@ MKV, MP4, AVI, MOV, MP3, WAV
 ## Running tests
 
 ```bash
+# Install dev dependencies (includes pytest)
+pip install -r requirements-dev.txt
+
 pytest tests/
 ```
 
