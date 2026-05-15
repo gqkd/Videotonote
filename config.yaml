@@ -24,8 +24,8 @@ watcher:
 
 whisper:
   model: large-v3
-  language: null  # auto-detect (gestisce italiano e inglese automaticamente)
-  device: auto    # auto = usa GPU se disponibile, altrimenti CPU | forzare con: cpu, cuda
+  language: null  # null = auto-detect language (handles Italian, English, and others)
+  device: auto    # auto = use GPU if available, otherwise CPU | force with: cpu, cuda
 
 ollama:
   base_url: http://localhost:11434

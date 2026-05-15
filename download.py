@@ -13,8 +13,8 @@ def load_input_dir(config_path: str = "config.yaml") -> str:
 
 def main():
     if len(sys.argv) < 2:
-        print("Uso: python download.py <url-youtube>")
-        print("Esempio: python download.py https://www.youtube.com/watch?v=...")
+        print("Usage: python download.py <youtube-url>")
+        print("Example: python download.py https://www.youtube.com/watch?v=...")
         sys.exit(1)
 
     url = sys.argv[1]

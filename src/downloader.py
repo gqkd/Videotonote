@@ -25,6 +25,6 @@ def download(url: str, input_dir: str):
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
         title = info.get("title", url)
-        logger.info(f'Download YouTube: "{title}"')
+        logger.info(f'Downloading YouTube: "{title}"')
         ydl.download([url])
-        logger.info("Download completato. Il watcher elaborerà il file automaticamente.")
+        logger.info("Download complete. The watcher will process the file automatically.")

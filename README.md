@@ -1,80 +1,94 @@
 # Videotonotes
 
-Monitora automaticamente una cartella per nuove registrazioni di videochiamate, le trascrive con Whisper e genera riassunti strutturati con Ollama.
+Automatically watches a folder for new call recordings, transcribes them with Whisper, and generates structured summaries with Ollama. Supports direct YouTube downloads.
 
-## Prerequisiti
+## Requirements
 
 - **Python 3.10+**
-- **ffmpeg** — installalo e assicurati che sia nel PATH di sistema
-  - Windows: [ffmpeg.org/download.html](https://ffmpeg.org/download.html) oppure `winget install ffmpeg`
-- **Ollama** — [ollama.com](https://ollama.com/) (avvialo prima di eseguire il programma)
+- **ffmpeg** — install it and make sure it's in your system PATH
+  - Windows: [ffmpeg.org/download.html](https://ffmpeg.org/download.html) or `winget install ffmpeg`
+- **Ollama** — [ollama.com](https://ollama.com/) (must be running before starting the program)
 
-## Installazione
+## Installation
 
 ```bash
-# Clona il repository
-git clone <url-repo>
-cd videotonotes
+# Clone the repository
+git clone https://github.com/gqkd/Videotonote.git
+cd Videotonote
 
-# Installa le dipendenze Python
+# Install Python dependencies
 pip install -r requirements.txt
 
-# Scarica il modello Ollama (una volta sola)
+# Pull the Ollama model (once)
 ollama pull llama3.1:8b
 ```
 
-> **Nota:** il modello Whisper `large-v3` (~3GB) viene scaricato automaticamente al primo avvio.
+> **Note:** the Whisper `large-v3` model (~3GB) is downloaded automatically on first run.
 
-## Configurazione
+## Configuration
 
-Modifica `config.yaml` per personalizzare percorsi e modelli:
+Edit `config.yaml` to customize paths, models, and behavior:
 
 ```yaml
-paths:
-  input: ./input       # cartella da monitorare
-  output: ./output     # cartella dove salvare i risultati
-
 whisper:
-  model: large-v3      # modello di trascrizione
-  language: it         # lingua principale
+  model: large-v3
+  language: null    # null = auto-detect (Italian, English, and others)
+  device: auto      # auto | cpu | cuda
 
 ollama:
-  model: llama3.1:8b   # modello per i riassunti
+  model: llama3.1:8b
+  base_url: http://localhost:11434
 ```
 
-Tutte le impostazioni possono essere sovrascritte tramite variabili d'ambiente (vedi `.env.example`).
+All settings can be overridden with environment variables (see `.env.example`).
 
-## Avvio
+## Usage
 
 ```bash
 python main.py
 ```
 
-All'avvio il programma:
-1. Verifica che ffmpeg e Ollama siano disponibili
-2. Inizia a monitorare la cartella `input/`
-3. Elabora automaticamente ogni nuovo file video
+On startup the program:
+1. Runs a health check (ffmpeg, Ollama, model availability)
+2. Starts watching the `input/` folder
+3. Automatically processes any new recording dropped in
 
-**Per fermare il programma e liberare la RAM:** premi `Ctrl+C`.
+**To stop the program and free RAM:** press `Ctrl+C`.
+
+### YouTube download
+
+Paste a YouTube URL directly into the running terminal:
+
+```
+> https://www.youtube.com/watch?v=...
+```
+
+Or from a second terminal:
+
+```bash
+python download.py https://www.youtube.com/watch?v=...
+```
+
+The audio is downloaded to `input/` and processed automatically by the watcher.
 
 ## Output
 
-Per ogni file elaborato viene creata una sottocartella in `output/`:
+For each processed file a subfolder is created under `output/`:
 
 ```
 output/
-  nome_registrazione/
-    transcript.md    ← trascrizione completa della chiamata
-    summary.md       ← riassunto con punti chiave, decisioni e task
+  recording_name/
+    transcript.md    ← full transcription of the call
+    summary.md       ← structured summary
 ```
 
-### Struttura di `summary.md`
+### `summary.md` structure
 
 ```markdown
-# Riassunto — nome_registrazione
+# Riassunto — recording_name
 
 ## Riassunto generale
-Breve descrizione dell'argomento principale della chiamata.
+Brief description of the main topic of the call.
 
 ## Punti chiave discussi
 - ...
@@ -86,20 +100,22 @@ Breve descrizione dell'argomento principale della chiamata.
 - ...
 ```
 
-## Formati supportati
+## Supported formats
 
 MKV, MP4, AVI, MOV, MP3, WAV
 
-## Eseguire i test
+## Running tests
 
 ```bash
 pytest tests/
 ```
 
-## Note Docker-readiness
+Tests do not require Whisper, Ollama, or ffmpeg — everything is mocked.
 
-Il progetto è pronto per essere containerizzato:
-- Nessun percorso hardcoded (tutto in `config.yaml`)
-- `ollama.base_url` configurabile via env var → punta al container Ollama
-- Le cartelle `input/` e `output/` sono montabili come volumi Docker
-- `.env.example` documenta tutte le variabili d'ambiente
+## Docker-readiness
+
+The project is structured for easy future containerization:
+- No hardcoded paths (everything in `config.yaml`)
+- `ollama.base_url` configurable via env var → point to an Ollama container
+- `input/` and `output/` folders are ready to be mounted as Docker volumes
+- `.env.example` documents all available environment variables

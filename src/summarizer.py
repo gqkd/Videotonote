@@ -5,6 +5,7 @@ from src.logger import get_logger
 
 logger = get_logger()
 
+# The prompt is intentionally in Italian to instruct the LLM to produce Italian output.
 PROMPT_TEMPLATE = """Sei un assistente che analizza trascrizioni di videochiamate di lavoro.
 
 Analizza la seguente trascrizione e produci un riassunto strutturato in italiano con queste sezioni:
@@ -54,7 +55,7 @@ def summarize(
     last_error = None
     for attempt in range(attempts):
         try:
-            logger.info(f"Richiesta riassunto a Ollama (tentativo {attempt + 1}/{attempts})...")
+            logger.info(f"Requesting summary from Ollama (attempt {attempt + 1}/{attempts})...")
             response = client.chat(
                 model=model,
                 messages=[{"role": "user", "content": prompt}],
@@ -63,14 +64,14 @@ def summarize(
             break
         except Exception as e:
             last_error = e
-            logger.warning(f"Ollama non raggiungibile: {e}")
+            logger.warning(f"Ollama unreachable: {e}")
             if attempt < attempts - 1:
                 wait = backoff[attempt] if attempt < len(backoff) else backoff[-1]
-                logger.info(f"Attendo {wait}s prima di riprovare...")
+                logger.info(f"Retrying in {wait}s...")
                 time.sleep(wait)
     else:
         raise RuntimeError(
-            f"Ollama non ha risposto dopo {attempts} tentativi. Ultimo errore: {last_error}"
+            f"Ollama did not respond after {attempts} attempts. Last error: {last_error}"
         )
 
     os.makedirs(output_dir, exist_ok=True)
@@ -81,5 +82,5 @@ def summarize(
         f.write(summary_body)
         f.write("\n")
 
-    logger.info(f"Riassunto salvato: {summary_path}")
+    logger.info(f"Summary saved: {summary_path}")
     return summary_body

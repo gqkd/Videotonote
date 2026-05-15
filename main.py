@@ -54,7 +54,7 @@ def validate_config(config: dict):
     ]
     for section, key in required:
         if not config.get(section, {}).get(key):
-            raise ValueError(f"Config mancante: [{section}] {key}")
+            raise ValueError(f"Missing config: [{section}] {key}")
 
 
 # --- Health checks ---
@@ -96,23 +96,23 @@ def run_health_checks(config: dict) -> bool:
     ok = True
 
     if check_ffmpeg():
-        logger.info("✓ ffmpeg trovato")
+        logger.info("✓ ffmpeg found")
     else:
-        logger.error("✗ ffmpeg non trovato. Installalo e aggiungilo al PATH.")
+        logger.error("✗ ffmpeg not found. Install it and add it to PATH.")
         ok = False
 
     base_url = config["ollama"]["base_url"]
     if check_ollama(base_url):
-        logger.info("✓ Ollama raggiungibile")
+        logger.info("✓ Ollama reachable")
     else:
-        logger.error(f"✗ Ollama non raggiungibile su {base_url}. Avvia Ollama prima di eseguire il programma.")
+        logger.error(f"✗ Ollama not reachable at {base_url}. Start Ollama before running the program.")
         ok = False
 
     model = config["ollama"]["model"]
     if ok and check_ollama_model(base_url, model):
-        logger.info(f"✓ Modello Ollama '{model}' disponibile")
+        logger.info(f"✓ Ollama model '{model}' available")
     elif ok:
-        logger.error(f"✗ Modello '{model}' non trovato. Esegui: ollama pull {model}")
+        logger.error(f"✗ Model '{model}' not found. Run: ollama pull {model}")
         ok = False
 
     return ok
@@ -127,22 +127,22 @@ def process_file(file_path: str, config: dict, tracker: Tracker):
     output_dir = os.path.join(config["paths"]["output"], output_name)
 
     try:
-        logger.info(f"Inizio elaborazione: {filename}")
+        logger.info(f"Processing: {filename}")
 
         transcript_text = transcribe(file_path, output_dir, config["whisper"])
         summarize(transcript_text, output_name, output_dir, config["ollama"])
 
         tracker.mark_processed(filename, "success")
-        logger.info(f"Elaborazione completata: {filename}")
+        logger.info(f"Done: {filename}")
 
     except KeyboardInterrupt:
         tracker.mark_processed(filename, "interrupted")
-        logger.info(f"Elaborazione interrotta: {filename}")
+        logger.info(f"Processing interrupted: {filename}")
         raise
 
     except Exception as e:
         tracker.mark_processed(filename, "error")
-        logger.error(f"Errore durante l'elaborazione di {filename}: {e}", exc_info=True)
+        logger.error(f"Error processing {filename}: {e}", exc_info=True)
 
 
 # --- URL input listener ---
@@ -160,9 +160,9 @@ def start_url_listener(input_dir: str):
                 try:
                     download(line, input_dir)
                 except Exception as e:
-                    get_logger().error(f"Errore durante il download: {e}")
+                    get_logger().error(f"Download error: {e}")
             else:
-                get_logger().warning(f"Input non riconosciuto (atteso un URL): {line}")
+                get_logger().warning(f"Unrecognized input (expected a URL): {line}")
 
     thread = threading.Thread(target=listen, daemon=True)
     thread.start()
@@ -176,13 +176,13 @@ def main():
 
     setup_logger(config["paths"]["logs"])
     logger = get_logger()
-    logger.info("=== Videotonotes avviato ===")
+    logger.info("=== Videotonotes started ===")
 
     os.makedirs(config["paths"]["input"], exist_ok=True)
     os.makedirs(config["paths"]["output"], exist_ok=True)
 
     if not run_health_checks(config):
-        logger.error("Health check fallito. Correggere i problemi prima di avviare.")
+        logger.error("Health check failed. Fix the issues above before starting.")
         sys.exit(1)
 
     tracker = Tracker(config["paths"]["processed_tracking"])
@@ -195,17 +195,17 @@ def main():
 
     start_url_listener(config["paths"]["input"])
 
-    logger.info(f"In ascolto su: {config['paths']['input']}")
-    logger.info("Incolla un URL YouTube per scaricarlo ed elaborarlo automaticamente.")
-    logger.info("Premi Ctrl+C per fermare il programma e liberare la RAM.")
+    logger.info(f"Watching: {config['paths']['input']}")
+    logger.info("Paste a YouTube URL to download and process it automatically.")
+    logger.info("Press Ctrl+C to stop the program and free RAM.")
 
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        logger.info("Arresto in corso...")
+        logger.info("Shutting down...")
         watcher.stop()
-        logger.info("=== Videotonotes fermato ===")
+        logger.info("=== Videotonotes stopped ===")
 
 
 if __name__ == "__main__":

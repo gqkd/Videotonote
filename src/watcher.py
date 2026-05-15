@@ -25,17 +25,17 @@ class VideoHandler(FileSystemEventHandler):
 
         ignore_exts = self._watcher_config.get("ignore_extensions", [])
         if ext in ignore_exts:
-            logger.debug(f"Ignorato (estensione temporanea): {filename}")
+            logger.debug(f"Ignored (temporary extension): {filename}")
             return True
 
         ignore_prefixes = self._watcher_config.get("ignore_prefixes", [])
         if any(filename.startswith(p) for p in ignore_prefixes):
-            logger.debug(f"Ignorato (prefisso): {filename}")
+            logger.debug(f"Ignored (prefix): {filename}")
             return True
 
         supported = self._watcher_config.get("supported_extensions", [])
         if supported and ext not in supported:
-            logger.debug(f"Ignorato (estensione non supportata): {filename}")
+            logger.debug(f"Ignored (unsupported extension): {filename}")
             return True
 
         return False
@@ -45,7 +45,7 @@ class VideoHandler(FileSystemEventHandler):
             return
 
         if self._tracker.is_processed(os.path.basename(file_path)):
-            logger.debug(f"Già processato: {os.path.basename(file_path)}")
+            logger.debug(f"Already processed: {os.path.basename(file_path)}")
             return
 
         with self._pending_lock:
@@ -53,7 +53,7 @@ class VideoHandler(FileSystemEventHandler):
                 return
             self._pending.add(file_path)
 
-        logger.info(f"Nuovo file rilevato: {os.path.basename(file_path)}. Attendo stabilità...")
+        logger.info(f"New file detected: {os.path.basename(file_path)}. Waiting for stability...")
         thread = threading.Thread(
             target=self._wait_for_stability,
             args=(file_path,),
@@ -71,7 +71,7 @@ class VideoHandler(FileSystemEventHandler):
             try:
                 size = os.path.getsize(file_path)
             except FileNotFoundError:
-                logger.warning(f"File sparito durante attesa stabilità: {file_path}")
+                logger.warning(f"File disappeared while waiting for stability: {file_path}")
                 with self._pending_lock:
                     self._pending.discard(file_path)
                 return
@@ -87,7 +87,7 @@ class VideoHandler(FileSystemEventHandler):
         with self._pending_lock:
             self._pending.discard(file_path)
 
-        logger.info(f"File stabile, avvio elaborazione: {os.path.basename(file_path)}")
+        logger.info(f"File stable, starting processing: {os.path.basename(file_path)}")
         self._on_stable_file(file_path)
 
     def on_created(self, event):
@@ -108,9 +108,9 @@ class VideoWatcher:
     def start(self):
         self._observer.schedule(self._handler, self._input_dir, recursive=False)
         self._observer.start()
-        logger.info(f"Watcher avviato su: {self._input_dir}")
+        logger.info(f"Watcher started on: {self._input_dir}")
 
     def stop(self):
         self._observer.stop()
         self._observer.join()
-        logger.info("Watcher fermato.")
+        logger.info("Watcher stopped.")

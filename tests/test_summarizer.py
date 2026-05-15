@@ -96,5 +96,5 @@ def test_raises_after_max_retries(tmp_path):
     with patch.dict(sys.modules, {"ollama": mock_module}):
         from src.summarizer import summarize
         output_dir = str(tmp_path / "video_test")
-        with pytest.raises(RuntimeError, match="Ollama non ha risposto"):
+        with pytest.raises(RuntimeError, match="Ollama did not respond"):
             summarize(FAKE_TRANSCRIPT, "video_test", output_dir, OLLAMA_CONFIG)
