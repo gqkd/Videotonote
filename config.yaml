@@ -1,0 +1,36 @@
+paths:
+  input: ./input
+  output: ./output
+  logs: ./logs
+  processed_tracking: ./processed.json
+
+watcher:
+  stability_wait_seconds: 10
+  supported_extensions:
+    - .mkv
+    - .mp4
+    - .avi
+    - .mov
+    - .mp3
+    - .wav
+  ignore_prefixes:
+    - "~"
+    - "."
+    - "_"
+  ignore_extensions:
+    - .tmp
+    - .part
+    - .crdownload
+
+whisper:
+  model: large-v3
+  language: it
+
+ollama:
+  base_url: http://localhost:11434
+  model: llama3.1:8b
+  retry_attempts: 3
+  retry_backoff_seconds:
+    - 5
+    - 15
+    - 30
