@@ -24,11 +24,11 @@ watcher:
 
 whisper:
   model: large-v3
-  language: it
+  language: null  # auto-detect (gestisce italiano e inglese automaticamente)
 
 ollama:
   base_url: http://localhost:11434
-  model: llama3.1:8b
+  model: qwen2.5-coder:latest
   retry_attempts: 3
   retry_backoff_seconds:
     - 5

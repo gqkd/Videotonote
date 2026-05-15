@@ -15,8 +15,9 @@ def transcribe(file_path: str, output_dir: str, whisper_config: dict) -> str:
     logger.info(f"Caricamento modello Whisper '{model_name}'...")
     model = whisper.load_model(model_name)
 
-    logger.info(f"Trascrizione in corso: {os.path.basename(file_path)}")
-    result = model.transcribe(file_path, language=language, verbose=True)
+    lang_display = language if language else "auto-detect"
+    logger.info(f"Trascrizione in corso: {os.path.basename(file_path)} (lingua: {lang_display})")
+    result = model.transcribe(file_path, language=language or None, verbose=True)
 
     transcript_text = result["text"].strip()
 
