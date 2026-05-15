@@ -1,6 +1,7 @@
 import os
 import subprocess
 import sys
+import threading
 import time
 import urllib.request
 import urllib.error
@@ -12,6 +13,7 @@ from src.tracker import Tracker
 from src.transcriber import transcribe
 from src.summarizer import summarize
 from src.watcher import VideoWatcher
+from src.downloader import download
 
 # --- Config loading ---
 
@@ -143,6 +145,29 @@ def process_file(file_path: str, config: dict, tracker: Tracker):
         logger.error(f"Errore durante l'elaborazione di {filename}: {e}", exc_info=True)
 
 
+# --- URL input listener ---
+
+def start_url_listener(input_dir: str):
+    def listen():
+        while True:
+            try:
+                line = input().strip()
+            except EOFError:
+                break
+            if not line:
+                continue
+            if line.startswith("http://") or line.startswith("https://"):
+                try:
+                    download(line, input_dir)
+                except Exception as e:
+                    get_logger().error(f"Errore durante il download: {e}")
+            else:
+                get_logger().warning(f"Input non riconosciuto (atteso un URL): {line}")
+
+    thread = threading.Thread(target=listen, daemon=True)
+    thread.start()
+
+
 # --- Main ---
 
 def main():
@@ -168,7 +193,10 @@ def main():
     watcher = VideoWatcher(config["paths"]["input"], config, tracker, on_stable_file)
     watcher.start()
 
+    start_url_listener(config["paths"]["input"])
+
     logger.info(f"In ascolto su: {config['paths']['input']}")
+    logger.info("Incolla un URL YouTube per scaricarlo ed elaborarlo automaticamente.")
     logger.info("Premi Ctrl+C per fermare il programma e liberare la RAM.")
 
     try:
