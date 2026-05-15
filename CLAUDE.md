@@ -1,88 +1,147 @@
 # Videotonotes
 
-Programma che monitora automaticamente una cartella di input, trascrive le registrazioni di videochiamate di lavoro con Whisper e genera riassunti strutturati con Ollama.
+Programma che monitora automaticamente una cartella di input, trascrive registrazioni di videochiamate con Whisper e genera riassunti strutturati con Ollama. Supporta anche il download diretto da YouTube.
+
+## Stato attuale (MVP completo)
+
+Tutte le fasi del piano originale sono state completate e testate. 27 test unitari verdi.
 
 ## Stack tecnico
 
-| Componente | Tecnologia |
-|---|---|
-| File watcher | `watchdog` |
-| Trascrizione audio | `openai-whisper` (modello `large-v3`) |
-| Estrazione audio | `ffmpeg` (installato nel sistema) |
-| Riassunto LLM | `ollama` + `llama3.1:8b` |
-| Configurazione | `config.yaml` + variabili d'ambiente |
-| Tracking file | `processed.json` |
-| Logging | `logging` stdlib (log rotante) |
-| Test | `pytest` |
+| Componente | Tecnologia | Note |
+|---|---|---|
+| File watcher | `watchdog` | Monitora `input/`, filtra temporanei |
+| Trascrizione | `openai-whisper large-v3` | GPU auto-detect (CUDA se disponibile, altrimenti CPU) |
+| Audio extraction | `ffmpeg` (system) | Gestisce MKV, MP4, MP3, WAV, ecc. |
+| Riassunto | `ollama` + modello configurabile | Default: `llama3.1:8b`, retry 3x |
+| Download YouTube | `yt-dlp` | Via `download.py` o URL inline nel terminale |
+| Configurazione | `config.yaml` + env vars | Docker-ready |
+| Tracking | `processed.json` | JSON leggero, evita riprocessamento |
+| Logging | `logging` stdlib | Log rotante in `logs/app.log` |
+| Test | `pytest` | 27 test unitari, tutti mockati (no dipendenze esterne) |
 
-## Struttura cartelle
+## Struttura progetto
 
 ```
 videotonotes/
-  input/               ← metti qui le registrazioni
+  input/               ← registrazioni da processare (gitignored)
   output/
     <nome_file>/
       transcript.md    ← trascrizione completa
       summary.md       ← riassunto strutturato
   logs/
-    app.log            ← log rotante
-  processed.json       ← tracking file elaborati
-  config.yaml          ← configurazione
+    app.log            ← log rotante (gitignored)
+  processed.json       ← tracking file elaborati (gitignored)
+  config.yaml          ← configurazione principale
+  main.py              ← entry point (watcher + URL listener)
+  download.py          ← CLI per scaricare da YouTube
   src/
-    logger.py
-    tracker.py
-    transcriber.py
-    summarizer.py
-    watcher.py
+    logger.py          ← setup logging rotante
+    tracker.py         ← gestione processed.json (thread-safe)
+    transcriber.py     ← Whisper: load/unload per file, GPU auto-detect
+    summarizer.py      ← Ollama: prompt italiano, retry esponenziale
+    watcher.py         ← watchdog + stability check (10s)
+    downloader.py      ← yt-dlp download YouTube
   tests/
     fixtures/
-      sample.wav
-    test_tracker.py
-    test_transcriber.py
-    test_summarizer.py
-    test_watcher.py
-  main.py
-  requirements.txt
+      sample.wav       ← audio breve per test (1s di silenzio)
+    test_tracker.py    ← 6 test
+    test_transcriber.py← 8 test (whisper e torch mockati)
+    test_summarizer.py ← 5 test (ollama mockato)
+    test_watcher.py    ← 8 test
 ```
-
-## Prerequisiti
-
-- Python 3.10+
-- [ffmpeg](https://ffmpeg.org/) installato e nel PATH
-- [Ollama](https://ollama.com/) installato e in esecuzione
-
-## Installazione
-
-```bash
-pip install -r requirements.txt
-ollama pull llama3.1:8b
-```
-
-## Configurazione
-
-Modifica `config.yaml` per cambiare percorsi, modelli o parametri. Tutte le chiavi supportano override tramite variabili d'ambiente (prefisso `VTN_`).
 
 ## Avvio
 
 ```bash
+pip install -r requirements.txt
+ollama pull llama3.1:8b   # prima volta
 python main.py
 ```
 
-All'avvio il programma esegue un health check automatico (ffmpeg, Ollama, modello) e segnala eventuali dipendenze mancanti.
+## Comandi disponibili a runtime
 
-Per fermare il programma e liberare la RAM: **Ctrl+C**. Lo stato viene salvato correttamente.
+Con `main.py` in esecuzione:
+- **Incolla un URL YouTube** direttamente nel terminale → scarica in `input/` e processa automaticamente
+- **Ctrl+C** → shutdown pulito, RAM liberata
 
-## Sviluppo
+Da un secondo terminale:
+```bash
+python download.py https://www.youtube.com/watch?v=...
+```
 
-- **Test-oriented**: ogni modulo ha i suoi test in `tests/`. Aggiungere test prima o subito dopo aver scritto il codice.
-- **Eseguire i test**: `pytest tests/`
-- **Non procedere** alla fase successiva se i test falliscono.
-- **Decisioni architetturali importanti**: chiedere input prima di implementare.
+## config.yaml — opzioni chiave
 
-## Note Docker-readiness
+```yaml
+whisper:
+  model: large-v3
+  language: null    # null = auto-detect italiano/inglese/altro
+  device: auto      # auto | cpu | cuda
 
-Il progetto è strutturato per essere facilmente containerizzabile in futuro:
+ollama:
+  base_url: http://localhost:11434
+  model: llama3.1:8b         # cambiare con modello disponibile
+  retry_attempts: 3
+  retry_backoff_seconds: [5, 15, 30]
+```
+
+**Override via env vars** (Docker-ready): `VTN_OLLAMA_BASE_URL`, `VTN_WHISPER_MODEL`, ecc. — vedi `.env.example`.
+
+## Comportamenti importanti da sapere
+
+- **Whisper**: caricato e scaricato dalla RAM ad ogni file (load/unload per file). Lento ma libera memoria tra un job e l'altro.
+- **GPU**: se CUDA è disponibile, Whisper la usa automaticamente. Ollama gestisce la GPU da solo.
+- **File temporanei**: il watcher ignora `.tmp`, `.part`, `.crdownload` e file che iniziano con `~`, `.`, `_`.
+- **Stabilità**: il watcher aspetta 10 secondi senza modifiche al file prima di elaborarlo (gestisce i file temporanei dei software di registrazione).
+- **Tracker**: solo i file con `status: success` in `processed.json` vengono ignorati al prossimo avvio. File con `status: error` o `interrupted` possono essere rielaborati cancellando il loro record da `processed.json`.
+- **Lingua**: Whisper rileva la lingua automaticamente (non forzare `language: it` — degrada la qualità su audio inglese).
+
+## Eseguire i test
+
+```bash
+pytest tests/          # tutti i test
+pytest tests/ -v       # con dettaglio
+pytest tests/test_transcriber.py  # modulo specifico
+```
+
+I test non richiedono Whisper, Ollama o ffmpeg installati — tutto è mockato.
+
+## Prerequisiti sistema
+
+- Python 3.10+
+- ffmpeg nel PATH (`winget install ffmpeg` su Windows)
+- Ollama in esecuzione (`ollama serve`)
+
+## Architettura — flusso principale
+
+```
+input/<file>
+    ↓
+[Watcher] filtra temporanei + controlla tracker
+    ↓
+[Stability check] aspetta 10s senza modifiche
+    ↓
+[Transcriber] Whisper large-v3 → output/<nome>/transcript.md
+    ↓
+[Summarizer] Ollama → output/<nome>/summary.md
+    ↓
+[Tracker] segna "success" in processed.json
+```
+
+## Docker-readiness (futura)
+
+Il progetto è già strutturato per Docker:
 - Nessun percorso hardcoded (tutto in `config.yaml`)
-- `ollama.base_url` configurabile tramite env var → punta al container Ollama
-- `paths.*` configurabili → montabili come volumi Docker
-- `.env.example` documenta le variabili d'ambiente necessarie
+- `ollama.base_url` configurabile → punterà al container Ollama
+- `paths.*` → volumi Docker
+- `.env.example` documenta le variabili d'ambiente
+
+Per containerizzare: creare `Dockerfile` + `docker-compose.yml` con due servizi (app + ollama) e montare `input/` e `output/` come volumi.
+
+## Idee per sviluppi futuri
+
+- Containerizzazione Docker + docker-compose
+- Interfaccia web minimale per visualizzare riassunti
+- Notifiche (email, Slack) al termine dell'elaborazione
+- Supporto multi-speaker nella trascrizione
+- Esportazione riassunti in PDF o DOCX
