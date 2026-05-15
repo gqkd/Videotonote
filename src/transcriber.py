@@ -6,14 +6,30 @@ from src.logger import get_logger
 logger = get_logger()
 
 
+def _select_device(requested: str) -> str:
+    import torch
+
+    if requested and requested.lower() != "auto":
+        return requested.lower()
+
+    if torch.cuda.is_available():
+        name = torch.cuda.get_device_name(0)
+        logger.info(f"GPU rilevata: {name} — Whisper girerà su CUDA.")
+        return "cuda"
+
+    logger.info("Nessuna GPU CUDA disponibile — Whisper girerà su CPU.")
+    return "cpu"
+
+
 def transcribe(file_path: str, output_dir: str, whisper_config: dict) -> str:
     import whisper
 
     model_name = whisper_config.get("model", "large-v3")
     language = whisper_config.get("language", "it")
+    device = _select_device(whisper_config.get("device", "auto"))
 
-    logger.info(f"Caricamento modello Whisper '{model_name}'...")
-    model = whisper.load_model(model_name)
+    logger.info(f"Caricamento modello Whisper '{model_name}' su {device.upper()}...")
+    model = whisper.load_model(model_name, device=device)
 
     lang_display = language if language else "auto-detect"
     logger.info(f"Trascrizione in corso: {os.path.basename(file_path)} (lingua: {lang_display})")
