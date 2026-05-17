@@ -42,3 +42,10 @@ def test_multiple_files(tracker):
     assert tracker.is_processed("a.mkv") is True
     assert tracker.is_processed("b.mkv") is False
     assert tracker.is_processed("c.mkv") is False
+
+
+def test_retry_after_error_updates_entry(tracker):
+    tracker.mark_processed("video.mkv", "error")
+    tracker.mark_processed("video.mkv", "success")
+    assert tracker.is_processed("video.mkv") is True
+    assert len(tracker._data["processed"]) == 1

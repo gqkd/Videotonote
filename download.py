@@ -1,5 +1,6 @@
-import sys
 import os
+import sys
+
 import yaml
 
 from src.downloader import download
@@ -8,7 +9,7 @@ from src.downloader import download
 def load_input_dir(config_path: str = "config.yaml") -> str:
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
-    return config["paths"]["input"]
+    return os.environ.get("VTN_PATHS_INPUT") or config["paths"]["input"]
 
 
 def main():

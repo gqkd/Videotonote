@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 import sys
@@ -81,7 +82,6 @@ def check_ollama(base_url: str) -> bool:
 
 
 def check_ollama_model(base_url: str, model_name: str) -> bool:
-    import json
     try:
         with urllib.request.urlopen(f"{base_url}/api/tags", timeout=5) as resp:
             data = json.loads(resp.read())

@@ -49,6 +49,9 @@ def summarize(
     attempts = ollama_config.get("retry_attempts", 3)
     backoff = ollama_config.get("retry_backoff_seconds", [5, 15, 30])
 
+    if attempts < 1:
+        raise ValueError("ollama.retry_attempts must be >= 1")
+
     client = ollama.Client(host=base_url)
     prompt = PROMPT_TEMPLATE.format(transcript=transcript_text)
 

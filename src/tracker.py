@@ -29,11 +29,16 @@ class Tracker:
 
     def mark_processed(self, filename: str, status: str):
         with self._lock:
-            self._data["processed"].append(
-                {
-                    "file": filename,
-                    "processed_at": datetime.now().isoformat(timespec="seconds"),
-                    "status": status,
-                }
+            entry = next(
+                (e for e in self._data["processed"] if e["file"] == filename),
+                None,
             )
+            now = datetime.now().isoformat(timespec="seconds")
+            if entry is not None:
+                entry["status"] = status
+                entry["processed_at"] = now
+            else:
+                self._data["processed"].append(
+                    {"file": filename, "processed_at": now, "status": status}
+                )
             self._save()

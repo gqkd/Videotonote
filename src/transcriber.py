@@ -33,12 +33,15 @@ def transcribe(file_path: str, output_dir: str, whisper_config: dict) -> str:
 
     lang_display = language if language else "auto-detect"
     logger.info(f"Transcribing: {os.path.basename(file_path)} (language: {lang_display})")
-    result = model.transcribe(file_path, language=language or None, verbose=True)
+    result = model.transcribe(file_path, language=language, verbose=True)
 
     transcript_text = result["text"].strip()
 
     del model
     gc.collect()
+    if device == "cuda":
+        import torch
+        torch.cuda.empty_cache()
     logger.info("Whisper model unloaded from RAM.")
 
     os.makedirs(output_dir, exist_ok=True)
